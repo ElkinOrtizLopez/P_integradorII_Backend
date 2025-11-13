@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 const pool = new Pool({
   connectionString: process.env.POSTGRES_URL
@@ -59,6 +60,17 @@ export async function POST(request: Request) {
       });
     }
 
+    // Generar JWT
+    const token = jwt.sign(
+      {
+        id: user.id,
+        name: user.name,
+        role: user.role
+      },
+      process.env.JWT_SECRET as string,
+      { expiresIn: '2h' }
+    );
+
     // Opcional: actualizar last_login
     await pool.query(
       'UPDATE auth_credentials SET last_login = NOW() WHERE user_id = $1',
@@ -67,6 +79,7 @@ export async function POST(request: Request) {
 
     return new NextResponse(JSON.stringify({
       mensaje: 'Login exitoso',
+      token,
       user: {
         id: user.id,
         name: user.name,

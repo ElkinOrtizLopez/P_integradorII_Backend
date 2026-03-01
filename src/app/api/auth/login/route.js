@@ -28,16 +28,16 @@ export async function POST(req) {
       user = insert.rows[0];
     }
 
-    // 4️⃣ Crear JWT interno
+    // 4️⃣ Crear JWT interno (mismo formato que /api/login para compatibilidad)
     const appToken = jwt.sign(
-      { uid: user.firebase_uid, role: user.role, email: user.email },
+      { id: user.id, uid: user.firebase_uid, role: user.role, email: user.email, name: user.name || '' },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
     return NextResponse.json({ user, token: appToken });
   } catch (err) {
-    console.error("Error en login:", err);
+    console.error("Error en /api/auth/login:", err.code, err.message);
     return NextResponse.json({ error: "Token inválido o expirado" }, { status: 401 });
   }
 }

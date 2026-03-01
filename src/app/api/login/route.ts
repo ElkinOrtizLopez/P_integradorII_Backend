@@ -1,17 +1,7 @@
 import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { pool } from '@/lib/db';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-
-const pool = new Pool({
-  connectionString: process.env.POSTGRES_URL
-});
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': 'http://localhost:4200',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-};
 
 export async function POST(request: Request) {
   try {
@@ -19,88 +9,49 @@ export async function POST(request: Request) {
     const { email, password } = body;
 
     if (!email || !password) {
-      return new NextResponse(JSON.stringify({ error: 'Email y contraseña son obligatorios' }), {
-        status: 400,
-        headers: corsHeaders
-      });
+      return NextResponse.json({ error: 'Email y contraseña son obligatorios' }, { status: 400 });
     }
 
-    // Buscar usuario
-    const userResult = await pool.query('SELECT id, name, role FROM users WHERE email = $1', [email]);
+    const userResult = await pool.query(
+      'SELECT id, name, role FROM users WHERE email = $1',
+      [email]
+    );
     if (userResult.rows.length === 0) {
-      return new NextResponse(JSON.stringify({ error: 'Usuario no encontrado' }), {
-        status: 404,
-        headers: corsHeaders
-      });
+      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
     }
 
     const user = userResult.rows[0];
 
-    // Buscar credenciales
     const credResult = await pool.query(
       'SELECT password_hash FROM auth_credentials WHERE user_id = $1',
       [user.id]
     );
-
     if (credResult.rows.length === 0) {
-      return new NextResponse(JSON.stringify({ error: 'Credenciales no encontradas' }), {
-        status: 404,
-        headers: corsHeaders
-      });
+      return NextResponse.json({ error: 'Credenciales no encontradas' }, { status: 404 });
     }
 
-    const { password_hash } = credResult.rows[0];
-
-    // Verificar contraseña
-    const isValid = await bcrypt.compare(password, password_hash);
+    const isValid = await bcrypt.compare(password, credResult.rows[0].password_hash);
     if (!isValid) {
-      return new NextResponse(JSON.stringify({ error: 'Contraseña incorrecta' }), {
-        status: 401,
-        headers: corsHeaders
-      });
+      return NextResponse.json({ error: 'Contraseña incorrecta' }, { status: 401 });
     }
 
-    // Generar JWT
     const token = jwt.sign(
-      {
-        id: user.id,
-        name: user.name,
-        role: user.role
-      },
+      { id: user.id, name: user.name, role: user.role },
       process.env.JWT_SECRET as string,
       { expiresIn: '2h' }
     );
 
-    // Opcional: actualizar last_login
     await pool.query(
       'UPDATE auth_credentials SET last_login = NOW() WHERE user_id = $1',
       [user.id]
     );
 
-    return new NextResponse(JSON.stringify({
-      mensaje: 'Login exitoso',
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        role: user.role
-      }
-    }), {
-      status: 200,
-      headers: corsHeaders
-    });
+    return NextResponse.json({ mensaje: 'Login exitoso', token, user: { id: user.id, name: user.name, role: user.role } });
   } catch (error: any) {
-    console.error('❌ Error en login:', error);
-    return new NextResponse(JSON.stringify({ error: error.message || 'Error desconocido' }), {
-      status: 500,
-      headers: corsHeaders
-    });
+    return NextResponse.json({ error: error.message || 'Error desconocido' }, { status: 500 });
   }
 }
 
 export function OPTIONS() {
-  return new Response(null, {
-    status: 204,
-    headers: corsHeaders
-  });
+  return new Response(null, { status: 204 });
 }

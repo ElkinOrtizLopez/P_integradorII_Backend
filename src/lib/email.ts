@@ -1,12 +1,18 @@
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
-const resend = new Resend(process.env.EMAIL_API_KEY);
+const transporter = nodemailer.createTransport({
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
-// Verifica si el email está configurado antes de intentar enviar
 function emailConfigurado(): boolean {
-  const key = process.env.EMAIL_API_KEY ?? '';
-  if (!key || key.startsWith('re_pega')) {
-    console.log('[Email] Sin API key configurada — email omitido.');
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.log('[Email] Sin credenciales configuradas — email omitido.');
     return false;
   }
   return true;
@@ -64,15 +70,17 @@ export async function enviarConfirmacion(datos: {
     <p>Si necesitas cancelar o reprogramar tu cita, ingresa a la aplicación con anticipación.</p>
   `;
 
-  const { error } = await resend.emails.send({
-    from: process.env.EMAIL_FROM || 'onboarding@resend.dev',
-    to: datos.emailDestino,
-    subject: `Cita confirmada con ${datos.nombreEspecialista} — ${datos.fecha}`,
-    html: plantillaBase(contenido),
-  });
-
-  if (error) console.error('[Email] Error al enviar confirmación:', error);
-  else console.log('[Email] Confirmación enviada a:', datos.emailDestino);
+  try {
+    await transporter.sendMail({
+      from: `"AppCitas" <${process.env.EMAIL_USER}>`,
+      to: datos.emailDestino,
+      subject: `Cita confirmada con ${datos.nombreEspecialista} — ${datos.fecha}`,
+      html: plantillaBase(contenido),
+    });
+    console.log('[Email] Confirmación enviada a:', datos.emailDestino);
+  } catch (error) {
+    console.error('[Email] Error al enviar confirmación:', error);
+  }
 }
 
 // ─── Email de recordatorio 24h antes de la cita ────────────────────────────
@@ -109,13 +117,15 @@ export async function enviarRecordatorio(datos: {
     <p>Si no puedes asistir, cancela tu cita desde la aplicación para liberar el horario.</p>
   `;
 
-  const { error } = await resend.emails.send({
-    from: process.env.EMAIL_FROM || 'onboarding@resend.dev',
-    to: datos.emailDestino,
-    subject: `Recordatorio: tu cita con ${datos.nombreEspecialista} es mañana`,
-    html: plantillaBase(contenido),
-  });
-
-  if (error) console.error('[Email] Error al enviar recordatorio:', error);
-  else console.log('[Email] Recordatorio enviado a:', datos.emailDestino);
+  try {
+    await transporter.sendMail({
+      from: `"AppCitas" <${process.env.EMAIL_USER}>`,
+      to: datos.emailDestino,
+      subject: `Recordatorio: tu cita con ${datos.nombreEspecialista} es mañana`,
+      html: plantillaBase(contenido),
+    });
+    console.log('[Email] Recordatorio enviado a:', datos.emailDestino);
+  } catch (error) {
+    console.error('[Email] Error al enviar recordatorio:', error);
+  }
 }

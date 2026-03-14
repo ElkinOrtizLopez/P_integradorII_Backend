@@ -47,12 +47,10 @@ import { Pool } from "pg";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-export async function GET(
-  request: Request,
-  { params }: { params: { doctor_id: string } }
-) {
+export async function GET(request: Request) {
   try {
-    const doctor_id = Number(params.doctor_id);
+    const { searchParams } = new URL(request.url);
+    const doctor_id = Number(searchParams.get("doctor_id"));
     if (!doctor_id) {
       return NextResponse.json({ error: "doctor_id requerido" }, { status: 400 });
     }

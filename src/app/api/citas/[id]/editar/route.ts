@@ -3,11 +3,11 @@ import { Pool } from "pg";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const body = await req.json();
     const { fecha, hora } = body;
-    const id = params.id;
+    const { id } = await params;
 
     // Verificar disponibilidad
     const exists = await pool.query(

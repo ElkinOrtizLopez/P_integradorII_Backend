@@ -2,15 +2,11 @@ import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 
-// GET /api/especialistas — Lista todos los especialistas con sus servicios (público)
+// GET /api/especialistas — Lista todos los especialistas (público)
 export async function GET() {
   try {
     const res = await pool.query(`
-      SELECT e.*, json_agg(json_build_object('id', s.id, 'nombre', s.nombre, 'precio', s.precio)) AS servicios
-      FROM especialistas e
-      LEFT JOIN servicios s ON s.especialista_id = e.id
-      GROUP BY e.id
-      ORDER BY e.nombre
+      SELECT * FROM especialistas ORDER BY nombre
     `);
     return NextResponse.json(res.rows);
   } catch (err: any) {
